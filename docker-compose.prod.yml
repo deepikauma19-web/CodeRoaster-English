@@ -1,0 +1,41 @@
+# Production override for a single VPS behind host nginx (TLS terminated by certbot).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# - backend/frontend are bound to 127.0.0.1 only; host nginx proxies to them.
+# - Postgres is never published to the host network.
+# - Secrets come from ./.env on the server (see .env.production.example).
+# Requires Docker Compose >= 2.24 for the `!override` / `!reset` tags.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    restart: unless-stopped
+    ports: !reset []
+    logging: *default-logging
+
+  backend:
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      COOKIE_SECURE: "true"
+      FRONTEND_URL: ${APP_URL:-https://roaster.getvibed.tech}
+      PUBLIC_API_URL: ${APP_URL:-https://roaster.getvibed.tech}
+      GOOGLE_REDIRECT_URI: ${APP_URL:-https://roaster.getvibed.tech}/api/v1/auth/google/callback
+    ports: !override
+      - "127.0.0.1:8000:8000"
+    logging: *default-logging
+
+  frontend:
+    build:
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://roaster.getvibed.tech}
+    restart: unless-stopped
+    ports: !override
+      - "127.0.0.1:3000:80"
+    logging: *default-logging

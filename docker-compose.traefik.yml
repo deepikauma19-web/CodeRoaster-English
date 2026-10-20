@@ -1,0 +1,38 @@
+# Traefik override: run behind an EXISTING Traefik on the VPS (no host nginx, no published ports).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.traefik.yml up -d --build
+#
+# Assumes the shared Traefik (docker provider, exposedbydefault=false) is attached to the
+# external Docker network below and has a Let's Encrypt resolver with the name below.
+# Override via .env on the server: TRAEFIK_NETWORK, TRAEFIK_CERT_RESOLVER, ROASTER_HOST.
+# Requires Docker Compose >= 2.24 for the `!reset` tag.
+
+services:
+  backend:
+    ports: !reset []
+    networks: [default, traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-n8n_default}
+      - traefik.http.routers.roaster-api.rule=Host(`${ROASTER_HOST:-roaster.getvibed.tech}`) && (PathPrefix(`/api`) || Path(`/health`))
+      - traefik.http.routers.roaster-api.priority=100
+      - traefik.http.routers.roaster-api.entrypoints=websecure
+      - traefik.http.routers.roaster-api.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-mytlschallenge}
+      - traefik.http.services.roaster-api.loadbalancer.server.port=8000
+
+  frontend:
+    ports: !reset []
+    networks: [default, traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-n8n_default}
+      - traefik.http.routers.roaster-web.rule=Host(`${ROASTER_HOST:-roaster.getvibed.tech}`)
+      - traefik.http.routers.roaster-web.priority=1
+      - traefik.http.routers.roaster-web.entrypoints=websecure
+      - traefik.http.routers.roaster-web.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-mytlschallenge}
+      - traefik.http.services.roaster-web.loadbalancer.server.port=80
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-n8n_default}

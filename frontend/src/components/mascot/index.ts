@@ -1,0 +1,1 @@
+export { RoasterMascot } from './RoasterMascot';

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.env
+.env.*
+!.env.example
+.git/
+.gitignore
+.DS_Store
+.idea/
+.vscode/
+npm-debug.log*
+Dockerfile
+.dockerignore
